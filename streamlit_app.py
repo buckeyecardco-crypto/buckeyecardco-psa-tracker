@@ -8,8 +8,8 @@ from supabase import create_client
 
 st.set_page_config(page_title="BuckeyeCardCo PSA Tracker", page_icon="🅾️", layout="wide")
 
-SUPABASE_URL = "https://nruitskhmqsdflnrjnu.supabase.co"
-SUPABASE_KEY = "sb_publishable_VXnT3I901o059rSTi35vRg_W60Ik9sn"
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
 GRADE_MAP = {
     "GEM MINT 10": 10,
@@ -53,10 +53,21 @@ div[data-testid="stMetric"] {
 )
 
 
+import httpx
+
 @st.cache_resource
 def get_client():
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
+    try:
+        url = st.secrets["SUPABASE_URL"].strip()
+        key = st.secrets["SUPABASE_KEY"].strip()
 
+        response = httpx.get(url, timeout=10.0)
+        st.write(f"Supabase status: {response.status_code}")
+
+        return create_client(url, key)
+    except Exception as e:
+        st.error(f"Connection failed: {e}")
+        st.stop()
 
 supabase = get_client()
 
