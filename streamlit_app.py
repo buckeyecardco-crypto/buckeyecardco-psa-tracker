@@ -53,21 +53,13 @@ div[data-testid="stMetric"] {
 )
 
 
-import httpx
+from supabase import create_client, Client
 
 @st.cache_resource
-def get_client():
-    try:
-        url = st.secrets["SUPABASE_URL"].strip()
-        key = st.secrets["SUPABASE_KEY"].strip()
-
-        response = httpx.get(url, timeout=10.0)
-        st.write(f"Supabase status: {response.status_code}")
-
-        return create_client(url, key)
-    except Exception as e:
-        st.error(f"Connection failed: {e}")
-        st.stop()
+def get_client() -> Client:
+    url = st.secrets["SUPABASE_URL"].strip()
+    key = st.secrets["SUPABASE_KEY"].strip()
+    return create_client(url, key)
 
 supabase = get_client()
 
