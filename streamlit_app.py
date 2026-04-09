@@ -91,7 +91,6 @@ def read_psa_csv(file_obj, source_name: str) -> pd.DataFrame:
 def fetch_workspaces():
     try:
         res = supabase.table("workspaces").select("*").order("name").execute()
-        st.write("Workspaces raw response:", res.data)
         return pd.DataFrame(res.data or [])
     except Exception as e:
         st.error(f"Supabase workspaces query failed: {e}")
