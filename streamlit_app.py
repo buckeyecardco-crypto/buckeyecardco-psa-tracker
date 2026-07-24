@@ -8,8 +8,8 @@ from supabase import create_client
 
 st.set_page_config(page_title="BuckeyeCardCo PSA Tracker", page_icon="🅾️", layout="wide")
 
-SUPABASE_URL = "https://nruitskhmqsdflnrjnu.supabase.co"
-SUPABASE_KEY = "sb_publishable_VXnT3I901o059rSTi35vRg_W60Ik9sn"
+SUPABASE_URL = st.secrets["SUPABASE_URL"].strip()
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"].strip()
 
 GRADE_MAP = {
     "GEM MINT 10": 10,
