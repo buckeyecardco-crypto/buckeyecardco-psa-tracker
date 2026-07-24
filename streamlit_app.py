@@ -8,8 +8,8 @@ from supabase import create_client
 
 st.set_page_config(page_title="BuckeyeCardCo PSA Tracker", page_icon="🅾️", layout="wide")
 
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+SUPABASE_URL = "https://nruitskhmqsdflnrjnu.supabase.co"
+SUPABASE_KEY = "sb_publishable_VXnT3I901o059rSTi35vRg_W60Ik9sn"
 
 GRADE_MAP = {
     "GEM MINT 10": 10,
@@ -53,13 +53,10 @@ div[data-testid="stMetric"] {
 )
 
 
-from supabase import create_client, Client
-
 @st.cache_resource
-def get_client() -> Client:
-    url = st.secrets["SUPABASE_URL"].strip()
-    key = st.secrets["SUPABASE_KEY"].strip()
-    return create_client(url, key)
+def get_client():
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
+
 
 supabase = get_client()
 
@@ -89,12 +86,8 @@ def read_psa_csv(file_obj, source_name: str) -> pd.DataFrame:
 
 
 def fetch_workspaces():
-    try:
-        res = supabase.table("workspaces").select("*").order("name").execute()
-        return pd.DataFrame(res.data or [])
-    except Exception as e:
-        st.error(f"Supabase workspaces query failed: {e}")
-        st.stop()
+    res = supabase.table("workspaces").select("*").order("name").execute()
+    return pd.DataFrame(res.data or [])
 
 
 def create_workspace(name: str):
@@ -170,15 +163,27 @@ def save_cards_from_upload(workspace_id: str, uploaded_files):
         existing_certs = {str(r.get("cert_no", "")) for r in existing}
         rows = []
         for _, row in df.iterrows():
-            cert = str(row.get("Cert #", ""))
+            cert = str(row.get("Cert #", "")).strip()
+            description = str(row.get("Description", "")).strip()
+            grade = str(row.get("Grade", "")).strip()
+
             if cert in existing_certs:
+                # Backfill/update PSA details for cards that were uploaded previously.
+                supabase.table("cards").update(
+                    {
+                        "description": description,
+                        "grade": grade,
+                    }
+                ).eq("workspace_id", workspace_id).eq("order_id", str(order_id)).eq("cert_no", cert).execute()
                 continue
+
             rows.append(
                 {
                     "workspace_id": workspace_id,
                     "order_id": str(order_id),
                     "cert_no": cert,
-                    "grade": str(row.get("Grade", "")),
+                    "description": description,
+                    "grade": grade,
                     "sold_price": None,
                     "cost": None,
                 }
@@ -290,7 +295,7 @@ if not cards_view.empty:
     cards_view["margin"] = cards_view["sold_price"].fillna(0) - cards_view["cost"].fillna(0)
 else:
     cards_view = pd.DataFrame(
-        columns=["order_id", "cert_no", "grade", "sold_price", "cost", "margin", "grade_num", "gem_flag"]
+        columns=["order_id", "cert_no", "description", "grade", "sold_price", "cost", "margin", "grade_num", "gem_flag"]
     )
 
 orders_view = orders_df.copy()
@@ -374,13 +379,14 @@ with tab2:
     if cards_view.empty:
         st.info("No card data loaded for this workspace.")
     else:
-        editable = cards_view[["id", "order_id", "cert_no", "grade", "cost", "sold_price", "margin"]].copy()
+        editable = cards_view[["id", "order_id", "description", "cert_no", "grade", "cost", "sold_price", "margin"]].copy()
         edited = st.data_editor(
             editable,
             use_container_width=True,
             hide_index=True,
-            disabled=["order_id", "cert_no", "grade", "margin"],
+            disabled=["order_id", "description", "cert_no", "grade", "margin"],
             column_config={
+                "description": st.column_config.TextColumn("Card Description", width="large"),
                 "cost": st.column_config.NumberColumn(format="$%.2f"),
                 "sold_price": st.column_config.NumberColumn(format="$%.2f"),
                 "margin": st.column_config.NumberColumn(format="$%.2f", disabled=True),
